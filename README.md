@@ -2,11 +2,6 @@
 This repository implements and analyzes methods for simulating random variables, focusing on acceptance-rejection. Tasks include proving correctness, studying the complexity of simulating a standard normal distribution from a symmetric exponential distribution, and comparing it with the Box-Muller method.
 
 
-
-# Random Variable Simulation
-
-This repository contains code and documentation for simulating random variables, with a focus on acceptance-rejection methods. The main tasks include proving the correctness of the simulation procedure and comparing the computational complexity of different methods.
-
 ## Tasks
 
 1. **Correctness Proof**
