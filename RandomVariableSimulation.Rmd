@@ -1,0 +1,202 @@
+---
+title: "task2"
+output: html_document
+date: "2024-03-25"
+---
+
+```{r setup, include=FALSE} 
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+```
+
+
+```{r}
+# Определение функции для оптимизации
+objective_function <- function(alpha) {
+  return(sqrt(2/pi) * (1/alpha) * exp(alpha^2/2))
+}
+
+# Поиск максимального значения alpha, минимизирующего функцию
+result <- optimize(objective_function, interval = c(0.01, 10), maximum = FALSE)
+
+# Оптимальное значение alpha
+alpha_optimal <- result$minimum
+alpha_optimal
+
+```
+
+
+```{r}
+alpha <- alpha_optimal
+
+# Определение функции плотности нормального распределения
+f <- function(x) {
+ (1/sqrt(2*pi)) * exp(-0.5 * x^2)
+}
+
+# Определение функции плотности симметричного экспоненциального распределения
+g <- function(x, alpha) {
+ (alpha/2) * exp(-alpha * abs(x))
+}
+
+# Вычисление отношения f(x)/g(x)
+ratio <- function(x, alpha) {
+  f(x) / g(x, alpha)
+}
+
+# Генерация последовательности значений x для проверки
+x_values <- seq(-10, 10, by = 0.01)
+
+# Вычисление отношения и проверка неравенства
+ratios <- sapply(x_values, ratio, alpha = alpha)
+
+# Проверка, удовлетворяют ли все значения неравенству
+all_ratios_within_bound <- all(ratios <= sqrt(2/pi) * (1/alpha) * exp(alpha^2/2))
+
+# Визуализация результатов
+if(all_ratios_within_bound) {
+  plot(x_values, ratios, type = "l", col = "blue",
+       ylim = c(0, max(ratios)),
+       main = "Ratio f(x)/g(x) vs. Constant Bound",
+       xlab = "x", ylab = "Ratio / Constant")
+  abline(h = sqrt(2/pi) * (1/alpha) * exp(alpha^2/2), col = "red", lty = 2)
+}
+
+```
+
+```{r}
+alpha <- 0.9999892
+#alpha <- 2
+#alpha <- 0.5
+
+dexp_sym <- function(x, alpha) {
+  (alpha / 2) * exp(-alpha * abs(x)) * sqrt(2/pi) * (1/alpha) * exp(alpha^2/2)
+}
+x <- seq(-5, 5, length.out = 1000)
+
+y_norm <- dnorm(x)
+
+y_exp <- dexp_sym(x, alpha)
+
+
+plot(x, y_norm, 
+     type = "l", 
+     lwd = 2, 
+     col = "blue", 
+     ylim = c(0, max(c(y_norm, y_exp))), 
+     xlab = "x", ylab = "Плотность", 
+     main = "Сравнение плотностей распределений")
+lines(x, y_exp, lwd = 2, col = "red")
+
+```
+
+
+```{r}
+alpha <-  0.9999892
+
+# Плотность стандартного нормального распределения
+f1 <- function(x) {
+  dnorm(x)
+}
+
+# Плотность симметричного экспоненциального распределения
+g1 <- function(x, alpha) {
+  (alpha / 2) * exp(-alpha * abs(x))
+}
+
+
+C1 <- function(alpha) {
+  sqrt(2/pi) * (1/alpha) * exp(alpha^2/2)
+} 
+
+
+# Функция, возвращающая значения из симметричного экспоненциального распределения
+sym_exp <- function(alpha, n) {
+  U <- runif(n) 
+  X <- ifelse(U < 0.5,
+              log(2 * U) / alpha, 
+              -log(2 * (1 - U)) / alpha) 
+  return(X)
+}
+
+
+
+rejection_sampling_optimized <- function(f1, g1, C1, alpha, n) {
+  max_iterations <- n * 2  
+  X <- sym_exp(alpha, max_iterations)  
+  U <- runif(max_iterations, 0, C1(alpha) * g1(X, alpha)) 
+  accepted <- X[U <= f1(X)]
+  
+  if (length(accepted) >= n) 
+    return(accepted[1:n])
+}
+
+
+# Генерируем выборку 
+n <- 100000
+samples <- rejection_sampling_optimized(f1, g1, C1, alpha, n)
+
+
+hist(samples, 
+     freq = FALSE,
+     breaks = 100,
+     col = 'skyblue',
+     xlim = c(-4, 4), 
+     main = "Гистограмма сгенерированных значений")
+curve(dnorm, 
+      col = "red", 
+      add = TRUE)
+
+
+```
+
+```{r}
+ks_test_result <- ks.test(samples, "pnorm", mean = 0, sd = 1)
+
+print(ks_test_result)
+```
+
+
+
+```{r}
+box_muller <- function(n) {
+  U1 <- runif(n/2)  
+  U2 <- runif(n/2)
+  Z1 <- sqrt(-2 * log(U1)) * cos(2 * pi * U2)
+  Z2 <- sqrt(-2 * log(U1)) * sin(2 * pi * U2)
+  return(c(Z1, Z2))
+}
+
+n <- 100000
+result <- box_muller(n) 
+ks_test <- ks.test(result, "pnorm")
+print(ks_test)
+
+
+```
+```{r}
+# Построение гистограммы и сравнение с теоретической плотностью стандартного нормального распределения
+hist(result, 
+     probability = TRUE, 
+     breaks = 100, 
+     col = 'skyblue', 
+     main = 'Box Muller')
+     curve(dnorm(x), 
+           add = TRUE, 
+           col = 'red', 
+           lwd = 2)
+
+```
+
+```{r}
+library(microbenchmark)
+
+results <- microbenchmark(
+  box_muller(100000),
+  sym_exp(alpha, 100000),
+  times = 1000 # количество повторений для оценки
+)
+
+print(results)
+```
+
+
